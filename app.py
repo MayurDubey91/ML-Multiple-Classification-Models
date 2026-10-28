@@ -3,6 +3,14 @@ import pandas as pd
 import numpy as np
 import joblib
 import os
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.svm import SVC
 
 st.set_page_config(page_title="Breast Cancer Classifier", layout="wide")
 
@@ -10,9 +18,9 @@ st.title("🔬 Breast Cancer Classification")
 st.markdown("**BITS Pilani WILP - ML Assignment 2** | Multiple Classification Models")
 st.markdown("---")
 
-# Load models
 @st.cache_resource
-def load_all():
+def get_models_and_data():
+    # Try to load existing models
     models = {}
     paths = {
         "Logistic Regression": "model/logistic_regression.joblib",
@@ -21,17 +29,34 @@ def load_all():
         "Naive Bayes": "model/naive_bayes.joblib",
         "SVM": "model/svm.joblib"
     }
-    for name, path in paths.items():
-        if os.path.exists(path):
+    scaler = None
+    models_exist = all(os.path.exists(p) for p in paths.values()) and os.path.exists("model/scaler.joblib")
+    
+    if models_exist:
+        for name, path in paths.items():
             models[name] = joblib.load(path)
-    scaler = joblib.load("model/scaler.joblib") if os.path.exists("model/scaler.joblib") else None
+        scaler = joblib.load("model/scaler.joblib")
+        st.sidebar.success("Loaded pre-trained models")
+    else:
+        # Train models if not present
+        st.sidebar.info("Training models (first run)...")
+        data = load_breast_cancer()
+        X = pd.DataFrame(data.data, columns=data.feature_names)
+        y = pd.Series(data.target)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+        scaler = StandardScaler()
+        X_train_scaled = scaler.fit_transform(X_train)
+        
+        models["Logistic Regression"] = LogisticRegression(max_iter=1000, random_state=42).fit(X_train_scaled, y_train)
+        models["Decision Tree"] = DecisionTreeClassifier(max_depth=5, min_samples_leaf=10, random_state=42).fit(X_train, y_train)
+        models["KNN"] = KNeighborsClassifier(n_neighbors=5).fit(X_train_scaled, y_train)
+        models["Naive Bayes"] = GaussianNB().fit(X_train_scaled, y_train)
+        models["SVM"] = SVC(probability=True, random_state=42).fit(X_train_scaled, y_train)
+        st.sidebar.success("Models trained successfully")
+    
     return models, scaler
 
-models, scaler = load_all()
-
-if not models:
-    st.error("Models not found in the 'model/' folder. Please ensure the repository contains the trained models.")
-    st.stop()
+models, scaler = get_models_and_data()
 
 # Comparison Table
 st.subheader("📊 Model Performance Comparison")
@@ -55,7 +80,6 @@ model = models[model_name]
 
 st.subheader(f"Prediction with **{model_name}**")
 
-# Feature names
 features = [
     'mean radius', 'mean texture', 'mean perimeter', 'mean area', 'mean smoothness',
     'mean compactness', 'mean concavity', 'mean concave points', 'mean symmetry', 'mean fractal dimension',
@@ -65,26 +89,22 @@ features = [
     'worst compactness', 'worst concavity', 'worst concave points', 'worst symmetry', 'worst fractal dimension'
 ]
 
-option = st.radio("Input method", ["Use sample from test set", "Upload CSV"])
+option = st.radio("Input method", ["Use sample values", "Upload CSV"])
 
-if option == "Use sample from test set":
-    if os.path.exists("test_data.csv"):
-        test_df = pd.read_csv("test_data.csv")
-        idx = st.slider("Select sample", 0, len(test_df)-1, 0)
-        row = test_df.iloc[idx]
-        actual = "Benign" if row['target'] == 1 else "Malignant"
-        st.info(f"Actual label: **{actual}**")
-        X = row[features].values.reshape(1, -1)
-    else:
-        st.warning("test_data.csv not found.")
-        st.stop()
+if option == "Use sample values":
+    # Default sample (malignant-like)
+    default_vals = [17.99, 10.38, 122.8, 1001.0, 0.1184, 0.2776, 0.3001, 0.1471, 0.2419, 0.07871,
+                    1.095, 0.9053, 8.589, 153.4, 0.006399, 0.04904, 0.05373, 0.01587, 0.03003, 0.006193,
+                    25.38, 17.33, 184.6, 2019.0, 0.1622, 0.6656, 0.7119, 0.2654, 0.4601, 0.1189]
+    X = np.array(default_vals).reshape(1, -1)
+    st.info("Using a sample feature vector (you can modify the code for more options)")
 else:
-    uploaded = st.file_uploader("Upload CSV (30 features, no target)", type="csv")
+    uploaded = st.file_uploader("Upload CSV (30 features)", type="csv")
     if uploaded:
         df = pd.read_csv(uploaded)
         X = df.iloc[0, :30].values.reshape(1, -1)
     else:
-        st.info("Please upload a CSV file.")
+        st.info("Please upload a CSV or choose sample values.")
         st.stop()
 
 # Scale if required
