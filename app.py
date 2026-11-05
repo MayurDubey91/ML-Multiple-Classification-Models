@@ -89,9 +89,15 @@ def score_model(name, model, frame):
         index=["Actual: no default", "Actual: default"],
         columns=["Predicted: no default", "Predicted: default"],
     )
-    report = classification_report(
-        y, pred, target_names=["no default", "default"], zero_division=0
+    report_dict = classification_report(
+        y,
+        pred,
+        target_names=["no default", "default"],
+        zero_division=0,
+        output_dict=True,
     )
+    report = pd.DataFrame(report_dict).T.round(4)
+    report.index.name = "class"
     return metrics, cm_df, report
 
 
@@ -163,7 +169,7 @@ with c1:
     st.dataframe(cm_df, use_container_width=True)
 with c2:
     st.markdown("**Classification report**")
-    st.text(report)
+    st.dataframe(report, use_container_width=True)
 
 st.subheader(f"Predict one client with {model_name}")
 idx = st.slider("Row in the file above", 0, len(eval_df) - 1, 0)
