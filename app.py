@@ -1,129 +1,124 @@
-import streamlit as st
-import pandas as pd
-import numpy as np
-import joblib
 import os
-from sklearn.datasets import load_breast_cancer
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.naive_bayes import GaussianNB
-from sklearn.svm import SVC
 
-st.set_page_config(page_title="Breast Cancer Classifier", layout="wide")
+import joblib
+import numpy as np
+import pandas as pd
+import streamlit as st
 
-st.title("🔬 Breast Cancer Classification")
-st.markdown("**BITS Pilani WILP - ML Assignment 2** | Multiple Classification Models")
-st.markdown("---")
+st.set_page_config(page_title="Credit Card Default Classifier", layout="wide")
+
+st.title("Credit Card Default Classification")
+st.markdown("**BITS Pilani WILP — ML Assignment 2**")
+st.caption(
+    "Dataset: UCI Default of Credit Card Clients (30,000 clients, 23 features). "
+    "Target: will the client default next month?"
+)
+
+FEATURES = [
+    "LIMIT_BAL", "SEX", "EDUCATION", "MARRIAGE", "AGE",
+    "PAY_0", "PAY_2", "PAY_3", "PAY_4", "PAY_5", "PAY_6",
+    "BILL_AMT1", "BILL_AMT2", "BILL_AMT3", "BILL_AMT4", "BILL_AMT5", "BILL_AMT6",
+    "PAY_AMT1", "PAY_AMT2", "PAY_AMT3", "PAY_AMT4", "PAY_AMT5", "PAY_AMT6",
+]
+TARGET = "default payment next month"
+NEEDS_SCALING = {"Logistic Regression", "KNN", "Naive Bayes", "SVM"}
+
+COMPARISON = pd.DataFrame({
+    "Model": ["Logistic Regression", "Decision Tree", "KNN", "Naive Bayes", "SVM"],
+    "Accuracy": [0.8077, 0.8167, 0.8065, 0.7525, 0.8077],
+    "AUC": [0.7076, 0.7508, 0.7325, 0.7249, 0.7044],
+    "Precision": [0.6868, 0.6697, 0.6153, 0.4515, 0.6876],
+    "Recall": [0.2396, 0.3376, 0.3338, 0.5539, 0.2389],
+    "F1": [0.3553, 0.4489, 0.4328, 0.4975, 0.3546],
+    "MCC": [0.3244, 0.3828, 0.3507, 0.3386, 0.3242],
+})
+
 
 @st.cache_resource
-def get_models_and_data():
-    # Try to load existing models
-    models = {}
+def load_models():
     paths = {
         "Logistic Regression": "model/logistic_regression.joblib",
         "Decision Tree": "model/decision_tree.joblib",
         "KNN": "model/knn.joblib",
         "Naive Bayes": "model/naive_bayes.joblib",
-        "SVM": "model/svm.joblib"
+        "SVM": "model/svm.joblib",
     }
-    scaler = None
-    models_exist = all(os.path.exists(p) for p in paths.values()) and os.path.exists("model/scaler.joblib")
-    
-    if models_exist:
-        for name, path in paths.items():
+    models = {}
+    for name, path in paths.items():
+        if os.path.exists(path):
             models[name] = joblib.load(path)
-        scaler = joblib.load("model/scaler.joblib")
-        st.sidebar.success("Loaded pre-trained models")
-    else:
-        # Train models if not present
-        st.sidebar.info("Training models (first run)...")
-        data = load_breast_cancer()
-        X = pd.DataFrame(data.data, columns=data.feature_names)
-        y = pd.Series(data.target)
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
-        scaler = StandardScaler()
-        X_train_scaled = scaler.fit_transform(X_train)
-        
-        models["Logistic Regression"] = LogisticRegression(max_iter=1000, random_state=42).fit(X_train_scaled, y_train)
-        models["Decision Tree"] = DecisionTreeClassifier(max_depth=5, min_samples_leaf=10, random_state=42).fit(X_train, y_train)
-        models["KNN"] = KNeighborsClassifier(n_neighbors=5).fit(X_train_scaled, y_train)
-        models["Naive Bayes"] = GaussianNB().fit(X_train_scaled, y_train)
-        models["SVM"] = SVC(probability=True, random_state=42).fit(X_train_scaled, y_train)
-        st.sidebar.success("Models trained successfully")
-    
+    scaler = joblib.load("model/scaler.joblib") if os.path.exists("model/scaler.joblib") else None
     return models, scaler
 
-models, scaler = get_models_and_data()
 
-# Comparison Table
-st.subheader("📊 Model Performance Comparison")
-comparison = pd.DataFrame({
-    "Model": ["Logistic Regression", "Decision Tree", "KNN", "Naive Bayes", "SVM"],
-    "Accuracy": [0.9825, 0.9474, 0.9561, 0.9298, 0.9825],
-    "AUC": [0.9954, 0.9901, 0.9788, 0.9868, 0.9950],
-    "Precision": [0.9861, 0.9583, 0.9589, 0.9444, 0.9861],
-    "Recall": [0.9861, 0.9583, 0.9722, 0.9444, 0.9861],
-    "F1": [0.9861, 0.9583, 0.9655, 0.9444, 0.9861],
-    "MCC": [0.9623, 0.8869, 0.9054, 0.8492, 0.9623]
-})
-st.dataframe(comparison.style.highlight_max(axis=0, subset=["Accuracy", "AUC", "F1", "MCC"]), use_container_width=True)
+models, scaler = load_models()
+if not models or scaler is None:
+    st.error("Trained models were not found in the model/ folder.")
+    st.stop()
 
-st.markdown("---")
+st.subheader("Model comparison (held-out test set)")
+st.dataframe(
+    COMPARISON.style.highlight_max(axis=0, subset=["Accuracy", "AUC", "F1", "MCC"]),
+    use_container_width=True,
+    hide_index=True,
+)
+st.caption(
+    "About 22% of clients default. A model that always predicts 'no default' already gets ~78% accuracy. "
+    "Decision Tree is the winner on accuracy, AUC, and MCC."
+)
 
-# Sidebar
-st.sidebar.header("Select Model")
+st.sidebar.header("Choose a model")
 model_name = st.sidebar.selectbox("Classifier", list(models.keys()))
-model = models[model_name]
+st.sidebar.markdown(
+    "**Class labels**  \n"
+    "0 = no default  \n"
+    "1 = default next month"
+)
 
-st.subheader(f"Prediction with **{model_name}**")
+st.subheader(f"Predict with {model_name}")
+option = st.radio(
+    "How should the app get the client data?",
+    ["Use a client from the test set", "Upload a CSV"],
+    horizontal=True,
+)
 
-features = [
-    'mean radius', 'mean texture', 'mean perimeter', 'mean area', 'mean smoothness',
-    'mean compactness', 'mean concavity', 'mean concave points', 'mean symmetry', 'mean fractal dimension',
-    'radius error', 'texture error', 'perimeter error', 'area error', 'smoothness error',
-    'compactness error', 'concavity error', 'concave points error', 'symmetry error', 'fractal dimension error',
-    'worst radius', 'worst texture', 'worst perimeter', 'worst area', 'worst smoothness',
-    'worst compactness', 'worst concavity', 'worst concave points', 'worst symmetry', 'worst fractal dimension'
-]
-
-option = st.radio("Input method", ["Use sample values", "Upload CSV"])
-
-if option == "Use sample values":
-    # Default sample (malignant-like)
-    default_vals = [17.99, 10.38, 122.8, 1001.0, 0.1184, 0.2776, 0.3001, 0.1471, 0.2419, 0.07871,
-                    1.095, 0.9053, 8.589, 153.4, 0.006399, 0.04904, 0.05373, 0.01587, 0.03003, 0.006193,
-                    25.38, 17.33, 184.6, 2019.0, 0.1622, 0.6656, 0.7119, 0.2654, 0.4601, 0.1189]
-    X = np.array(default_vals).reshape(1, -1)
-    st.info("Using a sample feature vector (you can modify the code for more options)")
-else:
-    uploaded = st.file_uploader("Upload CSV (30 features)", type="csv")
-    if uploaded:
-        df = pd.read_csv(uploaded)
-        X = df.iloc[0, :30].values.reshape(1, -1)
-    else:
-        st.info("Please upload a CSV or choose sample values.")
+if option == "Use a client from the test set":
+    if not os.path.exists("test_data.csv"):
+        st.error("test_data.csv is missing from the repository.")
         st.stop()
-
-# Scale if required
-if model_name != "Decision Tree" and scaler is not None:
-    X_input = scaler.transform(X)
+    test_df = pd.read_csv("test_data.csv")
+    idx = st.slider("Test-set row", 0, len(test_df) - 1, 0)
+    row = test_df.iloc[idx]
+    actual = "Default" if int(row[TARGET]) == 1 else "No default"
+    st.info(f"Actual label of this client: **{actual}**")
+    with st.expander("Show the 23 feature values"):
+        st.dataframe(row[FEATURES].to_frame("value"), use_container_width=True)
+    X = row[FEATURES].to_numpy(dtype=float).reshape(1, -1)
 else:
-    X_input = X
+    uploaded = st.file_uploader(
+        "CSV with the 23 feature columns (header names should match the dataset). Target column is optional.",
+        type="csv",
+    )
+    if uploaded is None:
+        st.info("Upload a CSV to continue.")
+        st.stop()
+    uploaded_df = pd.read_csv(uploaded)
+    missing = [c for c in FEATURES if c not in uploaded_df.columns]
+    if missing:
+        st.error("Missing columns: " + ", ".join(missing))
+        st.stop()
+    X = uploaded_df.loc[:, FEATURES].iloc[[0]].to_numpy(dtype=float)
+    st.write(f"Using the first row of the uploaded file ({len(uploaded_df)} rows found).")
+
+X_input = scaler.transform(X) if model_name in NEEDS_SCALING else X
 
 if st.button("Predict", type="primary"):
-    pred = model.predict(X_input)[0]
+    model = models[model_name]
+    pred = int(model.predict(X_input)[0])
     proba = model.predict_proba(X_input)[0]
-    label = "Benign" if pred == 1 else "Malignant"
-    conf = proba[pred] * 100
-
+    label = "Default" if pred == 1 else "No default"
     c1, c2 = st.columns(2)
     c1.metric("Prediction", label)
-    c2.metric("Confidence", f"{conf:.1f}%")
+    c2.metric("P(default)", f"{proba[1] * 100:.1f}%")
     st.progress(float(proba[1]))
-    st.caption("Bar shows probability of Benign")
-
-st.markdown("---")
-st.caption("Dataset: Breast Cancer Wisconsin (Diagnostic) | 30 features | Binary classification")
+    st.caption("The bar is the predicted probability of default (class 1).")
