@@ -23,6 +23,8 @@ Banks need to know, before the next month, which credit-card customers are likel
 ## c. GitHub Repository Link
 https://github.com/MayurDubey91/ML-Multiple-Classification-Models
 
+**Streamlit app:** https://2026aj05405-ml-multiple-classification-models.streamlit.app/
+
 ## d. Models Used
 
 ### Comparison Table
