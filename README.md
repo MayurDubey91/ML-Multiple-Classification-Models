@@ -5,7 +5,7 @@ Banks need to know, before the next month, which credit-card customers are likel
 
 ## b. Dataset Description
 - **Dataset Name**: Default of Credit Card Clients
-- **Source**: [UCI Machine Learning Repository — Default of Credit Card Clients](https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients) (dataset id 350). Training used the supplied workbook `default of credit card clients.xls`.
+- **Source**: [UCI Machine Learning Repository — Default of Credit Card Clients](https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients) (dataset id 350).
 - **Number of Features**: 23 (ID column was dropped; it is only a row number)
 - **Number of Instances**: 30,000
 - **Type**: Binary classification
